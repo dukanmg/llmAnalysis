@@ -8,22 +8,15 @@ from langchain_core.prompts import ChatPromptTemplate
 # Load environment variables
 load_dotenv()
 
-# Initialize the Groq client
-client = Groq(api_key=os.environ.get("GROQ_API_KEY2"))
-
-# Create the LLM definition
-def create_llm_definition():
-    return ChatGroq(
-        model="mixtral-8x7b-32768",
-        temperature=0,
-        max_tokens=None,
-        timeout=None,
-        max_retries=2,
-    )
 
 
+def llm_analyse(input_text,key):
+    if key=='1':
+        groqKey = "GROQ_API_KEY"
+    else:
+        groqKey = "GROQ_API_KEY2"
 
-def processing_text_to_info(input_text):
+    client = Groq(api_key=os.environ.get(groqKey))
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", "You are an AI that extracts structured information from text."),
@@ -31,14 +24,22 @@ def processing_text_to_info(input_text):
                 "human", 
                 "Extract the following details from the input text:\n"
                 "1. Device Name\n"
-                "2. Device Price\n"
+                "2. Device Discounted Price\n"
                 "3. Available Offers (if any)\n"
-                "4. Website Name\n\n"
+                "4. Website Name\n"
+                "5. Device URL\n\n"
                 "Input Text: {input_text}"
             ),
         ]
     )
-    llm = create_llm_definition()
+
+    llm = ChatGroq(
+        model="mixtral-8x7b-32768",
+        temperature=0,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2,
+    )
     chain = prompt | llm
     result = chain.invoke({"input_text": input_text})
     return result.content
@@ -53,13 +54,14 @@ app = Flask(__name__)
 def analyse_text():
     data = request.json
     text = data.get('text', '')
-
+    key = data.get('key', '')
+    print("key: ",key)
 
     if not text:
         return jsonify({'error': 'Text is required'}), 400
 
     meta_data={}
-    result = processing_text_to_info(text)
+    result = llm_analyse(text,key)
     print(result)
 
     return jsonify({'device_info': result})
